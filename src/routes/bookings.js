@@ -15,7 +15,7 @@ router.get("/", (req, res) => {
 });
 
 //buscar por data
-router.get("/buscar/data", (req, res) => {
+router.get("/buscar", (req, res) => {
     const reservas = JSON.parse(
         fs.readFileSync(filePath, "utf-8")
     );
