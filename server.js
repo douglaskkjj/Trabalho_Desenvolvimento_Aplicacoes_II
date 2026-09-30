@@ -6,7 +6,9 @@ app.use(express.json());
 
 const bookingsRoutes = require("./src/routes/bookings");
 const userRoutes = require("./src/routes/user");
+const companyRoutes = require("./src/routes/company");
 
+app.use("/company", companyRoutes);
 app.use("/users", userRoutes);
 app.use("/bookings", bookingsRoutes);
 
