@@ -5,9 +5,11 @@ const app = express();
 app.use(express.json());
 
 const bookingsRoutes = require("./src/routes/bookings");
+const userRoutes = require("./src/routes/user");
 
+app.use("/users", userRoutes);
 app.use("/bookings", bookingsRoutes);
 
 app.listen(3000, () => {
-    console.log("Servidor rodando na porta https://localhost:3000");
+    console.log("Servidor rodando na porta http://localhost:3000");
 });

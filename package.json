@@ -21,5 +21,6 @@
   "homepage": "https://github.com/douglaskkjj/Trabalho_Desenvolvimento_Aplicacoes_II#readme",
   "dependencies": {
     "express": "^5.2.1"
-  }
+  },
+  "devDependencies": {}
 }
