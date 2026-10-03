@@ -4,7 +4,7 @@ const path = require("path");
 
 const router = express.Router();
 
-const filePath = path.join(__dirname, "../db/spaces.json");
+const filePath = path.join(__dirname, "../data/spaces.json");
 
 // Ler os espaços
 function readSpaces() {
