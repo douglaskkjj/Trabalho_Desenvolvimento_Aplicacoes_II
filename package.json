@@ -1,8 +1,8 @@
 {
   "name": "trabalho_desenvolvimento_aplicacoes_ii",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "API para gerenciamento de espaços",
+  "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -20,7 +20,8 @@
   },
   "homepage": "https://github.com/douglaskkjj/Trabalho_Desenvolvimento_Aplicacoes_II#readme",
   "dependencies": {
-    "express": "^5.2.1"
-  },
-  "devDependencies": {}
+    "express": "^5.2.1",
+    "swagger-jsdoc": "^6.3.0",
+    "swagger-ui-express": "^5.0.1"
+  }
 }
