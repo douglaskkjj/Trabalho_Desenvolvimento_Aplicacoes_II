@@ -1,0 +1,34 @@
+[
+  {
+    "id": 1,
+    "name": "Sala de Reuniões 01",
+    "type": "MEETING_ROOM",
+    "capacity": 10,
+    "description": "Sala para reuniões e encontros",
+    "is_active": true
+  },
+  {
+    "id": 2,
+    "name": "Laboratório de Informática",
+    "type": "LAB",
+    "capacity": 30,
+    "description": "Laboratório equipado com computadores",
+    "is_active": true
+  },
+  {
+    "id": 3,
+    "name": "Espaço Coworking",
+    "type": "COWORKING",
+    "capacity": 20,
+    "description": "Espaço compartilhado para trabalho",
+    "is_active": true
+  },
+  {
+    "id": 4,
+    "name": "Sala de Reuniões 02",
+    "type": "MEETING_ROOM",
+    "capacity": 15,
+    "description": "Sala para reuniões",
+    "is_active": true
+  }
+]

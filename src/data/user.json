@@ -1,0 +1,22 @@
+[
+  {
+    "id": 1,
+    "name": "John Doe",
+    "email": "johndoe@example.com",
+    "password_hash": "$2b$12$...",
+    "role": "CLIENT",
+    "cpf_cnpj": "123.456.789-00",
+    "company_id": null,
+    "created_at": "2026-09-29T19:00:00"
+  },
+  {
+    "id": 2,
+    "name": "Jane Smith",
+    "email": "janesmith@example.com",
+    "password_hash": "$2b$12$...",
+    "role": "CLIENT",
+    "cpf_cnpj": "987.654.321-00",
+    "company_id": null,
+    "created_at": "2026-09-29T19:30:00"
+  }
+]
