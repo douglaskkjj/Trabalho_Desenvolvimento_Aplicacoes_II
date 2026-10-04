@@ -5,6 +5,17 @@ const path = require("path");
 const router = express.Router();
 
 const filePath = path.join(__dirname, "../data/user.json");
+/**
+ * @swagger
+ * /usuarios:
+ *   get:
+ *     summary: Buscar todos os usuários
+ *     tags:
+ *       - Usuários
+ *     responses:
+ *       200:
+ *         description: Lista de usuários cadastrados
+ */
 
 // Buscar todos os usuários
 router.get("/", (req, res) => {
@@ -15,6 +26,24 @@ router.get("/", (req, res) => {
     res.json(usuarios);
 });
 
+/**
+ * @swagger
+ * /usuarios/buscar:
+ *   get:
+ *     summary: Buscar usuário por nome
+ *     tags:
+ *       - Usuários
+ *     parameters:
+ *       - in: query
+ *         name: nome
+ *         required: true
+ *         schema:
+ *           type: string
+ *         example: João
+ *     responses:
+ *       200:
+ *         description: Usuários encontrados
+ */
 // Buscar por nome
 router.get("/buscar", (req, res) => {
     const usuarios = JSON.parse(
@@ -30,6 +59,25 @@ router.get("/buscar", (req, res) => {
     res.json(resultado);
 });
 
+/**
+ * @swagger
+ * /usuarios/buscar-data:
+ *   get:
+ *     summary: Buscar usuários por data de criação
+ *     tags:
+ *       - Usuários
+ *     parameters:
+ *       - in: query
+ *         name: data
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date
+ *         example: "2026-10-04"
+ *     responses:
+ *       200:
+ *         description: Usuários encontrados
+ */
 // Buscar por data
 router.get("/buscar-data", (req, res) => {
     const usuarios = JSON.parse(
@@ -45,6 +93,26 @@ router.get("/buscar-data", (req, res) => {
     res.json(resultado);
 });
 
+/**
+ * @swagger
+ * /usuarios/{id}:
+ *   get:
+ *     summary: Buscar usuário por ID
+ *     tags:
+ *       - Usuários
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         example: 1
+ *     responses:
+ *       200:
+ *         description: Usuário encontrado
+ *       404:
+ *         description: Usuário não encontrado
+ */
 // Buscar por ID
 router.get("/:id", (req, res) => {
     const usuarios = JSON.parse(
@@ -66,6 +134,47 @@ router.get("/:id", (req, res) => {
     res.json(usuario);
 });
 
+/**
+ * @swagger
+ * /usuarios:
+ *   post:
+ *     summary: Cadastrar novo usuário
+ *     tags:
+ *       - Usuários
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - email
+ *               - password_hash
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: João Silva
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: joao@email.com
+ *               password_hash:
+ *                 type: string
+ *                 example: senha123
+ *               role:
+ *                 type: string
+ *                 example: usuario
+ *               cpf_cnpj:
+ *                 type: string
+ *                 example: "123.456.789-00"
+ *               company_id:
+ *                 type: integer
+ *                 example: 1
+ *     responses:
+ *       201:
+ *         description: Usuário cadastrado com sucesso
+ */
 // novo usuario
 router.post("/", (req, res) => {
     const usuario = JSON.parse(
@@ -95,6 +204,53 @@ router.post("/", (req, res) => {
 
     res.status(201).json(novoUsuario);
 });
+
+/**
+ * @swagger
+ * /usuarios/{id}:
+ *   put:
+ *     summary: Atualizar usuário
+ *     tags:
+ *       - Usuários
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         example: 1
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: João Silva
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: joao@email.com
+ *               password_hash:
+ *                 type: string
+ *                 example: novaSenha123
+ *               role:
+ *                 type: string
+ *                 example: usuario
+ *               cpf_cnpj:
+ *                 type: string
+ *                 example: "123.456.789-00"
+ *               company_id:
+ *                 type: integer
+ *                 example: 1
+ *     responses:
+ *       200:
+ *         description: Usuário atualizado com sucesso
+ *       404:
+ *         description: Usuário não encontrado
+ */
 
 // atualiza usuario
 router.put("/:id", (req, res) => {
@@ -128,7 +284,26 @@ router.put("/:id", (req, res) => {
     res.json(usuarios[indice]);
 });
 
-
+/**
+ * @swagger
+ * /usuarios/{id}:
+ *   delete:
+ *     summary: Deletar usuário
+ *     tags:
+ *       - Usuários
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         example: 1
+ *     responses:
+ *       200:
+ *         description: Usuário removido com sucesso
+ *       404:
+ *         description: Usuário não encontrado
+ */
 // deletar usuario
 router.delete("/:id", (req, res) => {
     const usuarios = JSON.parse(
