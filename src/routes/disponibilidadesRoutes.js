@@ -4,14 +4,14 @@ const path = require('path');
 
 const router = express.Router();
 
-const dataPath = path.join(__dirname, 'data', 'disponibilidades.json');
+const filePath = path.join(__dirname, "../data/disponibilidades.json");
 
 function lerDisponibilidades() {
-    return JSON.parse(fs.readFileSync(dataPath, 'utf8'));
+    return JSON.parse(fs.readFileSync(filePath, 'utf8'));
 }
 
 function salvarDisponibilidades(dados) {
-    fs.writeFileSync(dataPath, JSON.stringify(dados, null, 2));
+    fs.writeFileSync(filePath  , JSON.stringify(dados, null, 2));
 }
 
 /**
