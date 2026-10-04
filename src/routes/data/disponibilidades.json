@@ -1,0 +1,21 @@
+[
+  {
+    "id": 1,
+    "space_id": 1,
+    "day_of_week": 1,
+    "start_time": "08:00",
+    "end_time": "12:00",
+    "is_external_allowed": true
+  },
+  {
+    "id": 2,
+    "space_id": 1,
+    "day_of_week": 2,
+    "start_time": "13:00",
+    "end_time": "18:00",
+    "is_external_allowed": false
+  },
+  {
+    "id": 3
+  }
+]
