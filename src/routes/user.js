@@ -7,7 +7,7 @@ const router = express.Router();
 const filePath = path.join(__dirname, "../data/user.json");
 /**
  * @swagger
- * /usuarios:
+ * /users:
  *   get:
  *     summary: Buscar todos os usuários
  *     tags:
@@ -28,7 +28,7 @@ router.get("/", (req, res) => {
 
 /**
  * @swagger
- * /usuarios/buscar:
+ * /users/buscar:
  *   get:
  *     summary: Buscar usuário por nome
  *     tags:
@@ -61,7 +61,7 @@ router.get("/buscar", (req, res) => {
 
 /**
  * @swagger
- * /usuarios/buscar-data:
+ * /users/buscar-data:
  *   get:
  *     summary: Buscar usuários por data de criação
  *     tags:
@@ -95,7 +95,7 @@ router.get("/buscar-data", (req, res) => {
 
 /**
  * @swagger
- * /usuarios/{id}:
+ * /users/{id}:
  *   get:
  *     summary: Buscar usuário por ID
  *     tags:
@@ -136,7 +136,7 @@ router.get("/:id", (req, res) => {
 
 /**
  * @swagger
- * /usuarios:
+ * /users:
  *   post:
  *     summary: Cadastrar novo usuário
  *     tags:
@@ -207,7 +207,7 @@ router.post("/", (req, res) => {
 
 /**
  * @swagger
- * /usuarios/{id}:
+ * /users/{id}:
  *   put:
  *     summary: Atualizar usuário
  *     tags:
@@ -286,7 +286,7 @@ router.put("/:id", (req, res) => {
 
 /**
  * @swagger
- * /usuarios/{id}:
+ * /users/{id}:
  *   delete:
  *     summary: Deletar usuário
  *     tags:
