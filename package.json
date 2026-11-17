@@ -21,6 +21,7 @@
   "homepage": "https://github.com/douglaskkjj/Trabalho_Desenvolvimento_Aplicacoes_II#readme",
   "dependencies": {
     "express": "^5.2.1",
+    "mongoose": "^9.11.4",
     "swagger-jsdoc": "^6.3.0",
     "swagger-ui-express": "^5.0.1"
   }

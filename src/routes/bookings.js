@@ -1,30 +1,7 @@
-const express = require("express");
-const fs = require("fs");
-const path = require("path");
-
+const express = require('express');
 const router = express.Router();
 
-const filePath = path.join(__dirname, "../data/bookings.json");
-
-const statusPermitidos = [
-    "PENDING",
-    "APPROVED",
-    "REJECTED",
-    "CANCELLED"
-];
-
-function lerReservas() {
-    return JSON.parse(
-        fs.readFileSync(filePath, "utf-8")
-    );
-}
-
-function salvarReservas(reservas) {
-    fs.writeFileSync(
-        filePath,
-        JSON.stringify(reservas, null, 2)
-    );
-}
+const Booking = require('../models/Booking');
 
 
 /**
@@ -38,11 +15,16 @@ function salvarReservas(reservas) {
  *       200:
  *         description: Lista de todas as reservas
  */
-router.get("/", (req, res) => {
-
-    const reservas = lerReservas();
+router.get('/', async (req, res) => {
+  try {
+    const reservas = await Booking.find();
 
     res.json(reservas);
+  } catch (error) {
+    res.status(500).json({
+      mensagem: 'Erro ao listar reservas'
+    });
+  }
 });
 
 
@@ -68,25 +50,106 @@ router.get("/", (req, res) => {
  *       400:
  *         description: Data não informada
  */
-router.get("/buscar", (req, res) => {
-
-    const data = req.query.data;
+router.get('/buscar', async (req, res) => {
+  try {
+    const { data } = req.query;
 
     if (!data) {
-        return res.status(400).json({
-            mensagem: "Informe a data para realizar a busca"
-        });
+      return res.status(400).json({
+        mensagem: 'Informe a data para realizar a busca'
+      });
     }
 
-    const reservas = lerReservas();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) {
+      return res.status(400).json({
+        mensagem: 'Informe uma data válida no formato AAAA-MM-DD'
+      });
+    }
 
-    const resultado = reservas.filter((reserva) =>
-        reserva.start_datetime.startsWith(data)
-    );
+    const inicio = new Date(`${data}T00:00:00.000Z`);
+
+    if (
+      Number.isNaN(inicio.getTime()) ||
+      inicio.toISOString().slice(0, 10) !== data
+    ) {
+      return res.status(400).json({
+        mensagem: 'Informe uma data válida'
+      });
+    }
+
+    const fim = new Date(inicio);
+    fim.setUTCDate(fim.getUTCDate() + 1);
+
+    const resultado = await Booking.find({
+      start_datetime: {
+        $gte: inicio,
+        $lt: fim
+      }
+    });
 
     res.json(resultado);
+  } catch (error) {
+    res.status(500).json({
+      mensagem: 'Erro ao buscar reservas'
+    });
+  }
 });
 
+/**
+ * @swagger
+ * /bookings/buscar-status:
+ *   get:
+ *     summary: Buscar reservas por status
+ *     tags:
+ *       - Reservas
+ *     parameters:
+ *       - in: query
+ *         name: status
+ *         required: true
+ *         schema:
+ *           type: string
+ *         example: PENDING
+ *     responses:
+ *       200:
+ *         description: Lista de reservas encontradas
+ *       400:
+ *         description: Status não informado
+ */
+
+
+// busca por status
+router.get('/buscar-status', async (req, res) => {
+  try {
+    const { status } = req.query;
+
+    if (!status) {
+      return res.status(400).json({
+        mensagem: 'Informe o status para realizar a busca'
+      });
+    }
+
+    const statusPermitidos = [
+      'PENDING',
+      'APPROVED',
+      'REJECTED',
+      'CANCELLED'
+    ];
+
+    if (!statusPermitidos.includes(status)) {
+      return res.status(400).json({
+        mensagem: 'Status inválido'
+      });
+    }
+
+    const resultado = await Booking.find({ status });
+
+    res.json(resultado);
+  } catch (error) {
+    res.status(500).json({
+      mensagem: 'Erro ao buscar reservas'
+    });
+  }
+});
 
 /**
  * @swagger
@@ -109,25 +172,31 @@ router.get("/buscar", (req, res) => {
  *       404:
  *         description: Reserva não encontrada
  */
-router.get("/:id", (req, res) => {
-
-    const reservas = lerReservas();
-
+router.get('/:id', async (req, res) => {
+  try {
     const id = Number(req.params.id);
 
-    const reserva = reservas.find(
-        (reserva) => reserva.id === id
-    );
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({
+        mensagem: 'ID inválido'
+      });
+    }
+
+    const reserva = await Booking.findOne({ id });
 
     if (!reserva) {
-        return res.status(404).json({
-            mensagem: "Reserva não encontrada"
-        });
+      return res.status(404).json({
+        mensagem: 'Reserva não encontrada'
+      });
     }
 
     res.json(reserva);
+  } catch (error) {
+    res.status(500).json({
+      mensagem: 'Erro ao buscar reserva'
+    });
+  }
 });
-
 
 /**
  * @swagger
@@ -166,38 +235,63 @@ router.get("/:id", (req, res) => {
  *       201:
  *         description: Reserva criada com sucesso
  */
-router.post("/", (req, res) => {
+router.post('/', async (req, res) => {
+  try {
+    const {
+      space_id,
+      user_id,
+      start_datetime,
+      end_datetime
+    } = req.body;
 
-    const reservas = lerReservas();
+    if (
+      space_id === undefined ||
+      user_id === undefined ||
+      !start_datetime ||
+      !end_datetime
+    ) {
+      return res.status(400).json({
+        mensagem: 'Informe espaço, usuário, início e término'
+      });
+    }
 
-    const novaReserva = {
+    const inicio = new Date(start_datetime);
+    const fim = new Date(end_datetime);
 
-        id: reservas.length > 0
-            ? reservas[reservas.length - 1].id + 1
-            : 1,
+    if (
+      Number.isNaN(inicio.getTime()) ||
+      Number.isNaN(fim.getTime()) ||
+      fim <= inicio
+    ) {
+      return res.status(400).json({
+        mensagem: 'Informe datas válidas e um término posterior ao início'
+      });
+    }
 
-        space_id: req.body.space_id,
+    const ultimaReserva = await Booking.findOne()
+      .sort({ id: -1 });
 
-        user_id: req.body.user_id,
+    const proximoId = ultimaReserva
+      ? ultimaReserva.id + 1
+      : 1;
 
-        start_datetime: req.body.start_datetime,
-
-        end_datetime: req.body.end_datetime,
-
-        status: "PENDING",
-
-        rejection_reason: null,
-
-        created_at: new Date().toISOString()
-    };
-
-    reservas.push(novaReserva);
-
-    salvarReservas(reservas);
+    const novaReserva = await Booking.create({
+      id: proximoId,
+      space_id,
+      user_id,
+      start_datetime: inicio,
+      end_datetime: fim,
+      status: 'PENDING',
+      rejection_reason: null
+    });
 
     res.status(201).json(novaReserva);
+  } catch (error) {
+    res.status(500).json({
+      mensagem: 'Erro ao criar reserva'
+    });
+  }
 });
-
 
 /**
  * @swagger
@@ -255,42 +349,101 @@ router.post("/", (req, res) => {
  *       404:
  *         description: Reserva não encontrada
  */
-router.put("/:id", (req, res) => {
-
-    const reservas = lerReservas();
-
+router.put('/:id', async (req, res) => {
+  try {
     const id = Number(req.params.id);
 
-    const indice = reservas.findIndex(
-        (reserva) => reserva.id === id
-    );
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({
+        mensagem: 'ID inválido'
+      });
+    }
 
-    if (indice === -1) {
-        return res.status(404).json({
-            mensagem: "Reserva não encontrada"
-        });
+    const camposPermitidos = [
+      'space_id',
+      'user_id',
+      'start_datetime',
+      'end_datetime',
+      'status',
+      'rejection_reason'
+    ];
+
+    const atualizacao = {};
+
+    for (const campo of camposPermitidos) {
+      if (req.body[campo] !== undefined) {
+        atualizacao[campo] = req.body[campo];
+      }
     }
 
     if (
-        req.body.status !== undefined &&
-        !statusPermitidos.includes(req.body.status)
+      atualizacao.status !== undefined &&
+      ![
+        'PENDING',
+        'APPROVED',
+        'REJECTED',
+        'CANCELLED'
+      ].includes(atualizacao.status)
     ) {
-        return res.status(400).json({
-            mensagem: "Status inválido"
-        });
+      return res.status(400).json({
+        mensagem: 'Status inválido'
+      });
     }
 
-    reservas[indice] = {
-        ...reservas[indice],
-        ...req.body,
-        id: id
-    };
+    if (
+      atualizacao.start_datetime !== undefined
+    ) {
+      atualizacao.start_datetime =
+        new Date(atualizacao.start_datetime);
+    }
 
-    salvarReservas(reservas);
+    if (
+      atualizacao.end_datetime !== undefined
+    ) {
+      atualizacao.end_datetime =
+        new Date(atualizacao.end_datetime);
+    }
 
-    res.json(reservas[indice]);
+    const reservaAtual = await Booking.findOne({ id });
+
+    if (!reservaAtual) {
+      return res.status(404).json({
+        mensagem: 'Reserva não encontrada'
+      });
+    }
+
+    const inicio = atualizacao.start_datetime ??
+      reservaAtual.start_datetime;
+
+    const fim = atualizacao.end_datetime ??
+      reservaAtual.end_datetime;
+
+    if (
+      Number.isNaN(new Date(inicio).getTime()) ||
+      Number.isNaN(new Date(fim).getTime()) ||
+      new Date(fim) <= new Date(inicio)
+    ) {
+      return res.status(400).json({
+        mensagem: 'Datas inválidas para a reserva'
+      });
+    }
+
+    const reservaAtualizada = await Booking.findOneAndUpdate(
+      { id },
+      { $set: atualizacao },
+      {
+        new: true,
+        runValidators: true
+      }
+    );
+
+    res.json(reservaAtualizada);
+  } catch (error) {
+    res.status(500).json({
+      mensagem: 'Erro ao atualizar reserva'
+    });
+  }
 });
-
 
 /**
  * @swagger
@@ -313,31 +466,35 @@ router.put("/:id", (req, res) => {
  *       404:
  *         description: Reserva não encontrada
  */
-router.delete("/:id", (req, res) => {
-
-    const reservas = lerReservas();
-
+router.delete('/:id', async (req, res) => {
+  try {
     const id = Number(req.params.id);
 
-    const indice = reservas.findIndex(
-        (reserva) => reserva.id === id
-    );
-
-    if (indice === -1) {
-        return res.status(404).json({
-            mensagem: "Reserva não encontrada"
-        });
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({
+        mensagem: 'ID inválido'
+      });
     }
 
-    const reservaRemovida = reservas.splice(indice, 1)[0];
+    const reservaRemovida = await Booking.findOneAndDelete({
+      id
+    });
 
-    salvarReservas(reservas);
+    if (!reservaRemovida) {
+      return res.status(404).json({
+        mensagem: 'Reserva não encontrada'
+      });
+    }
 
     res.json({
-        mensagem: "Reserva removida com sucesso",
-        reserva: reservaRemovida
+      mensagem: 'Reserva removida com sucesso',
+      reserva: reservaRemovida
     });
+  } catch (error) {
+    res.status(500).json({
+      mensagem: 'Erro ao excluir reserva'
+    });
+  }
 });
-
 
 module.exports = router;

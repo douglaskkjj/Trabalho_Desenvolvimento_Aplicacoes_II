@@ -1,4 +1,5 @@
 const express = require("express");
+const connectDB = require('./src/config/database');
 
 const swaggerUi = require("swagger-ui-express");
 const swaggerSpec = require("./swagger");
@@ -24,6 +25,19 @@ app.use("/", disponibilidadesRoutes );
 // Swagger
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
-app.listen(PORT, () => {
-    console.log(`Servidor rodando em http://localhost:${PORT}`);
-});
+async function iniciarServidor() {
+  try {
+    await connectDB();
+
+    app.listen(PORT, () => {
+      console.log(
+        `Servidor rodando em http://localhost:${PORT}`
+      );
+    });
+  } catch (error) {
+    console.error('Erro ao iniciar a aplicação:', error);
+    process.exit(1);
+  }
+}
+
+iniciarServidor();
