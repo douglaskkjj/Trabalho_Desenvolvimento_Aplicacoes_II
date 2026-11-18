@@ -1,10 +1,8 @@
-const express = require("express");
-const fs = require("fs");
-const path = require("path");
 
+const express = require("express");
 const router = express.Router();
 
-const filePath = path.join(__dirname, "../data/company.json");
+const Company = require("../models/Company");
 
 /**
  * @swagger
@@ -18,14 +16,21 @@ const filePath = path.join(__dirname, "../data/company.json");
  *         description: Lista de empresas cadastradas
  */
 
-// Buscar todos os usuários
-router.get("/", (req, res) => {
-    const empresas = JSON.parse(
-        fs.readFileSync(filePath, "utf-8")
-    );
+// Buscar todas as empresas
+router.get("/", async (req, res) => {
+    try {
+        const empresas = await Company.find();
 
-    res.json(empresas);
+        return res.status(200).json(empresas);
+    } catch (error) {
+        console.error("Erro ao buscar empresas:", error);
+
+        return res.status(500).json({
+            mensagem: "Erro ao buscar empresas."
+        });
+    }
 });
+
 /**
  * @swagger
  * /company/buscar:
@@ -39,25 +44,40 @@ router.get("/", (req, res) => {
  *         required: true
  *         schema:
  *           type: string
- *         example: Empresa Exemplo
+ *           example: Empresa Exemplo
  *     responses:
  *       200:
  *         description: Empresas encontradas
  */
+
 // Buscar por nome
-router.get("/buscar", (req, res) => {
-    const empresas = JSON.parse(
-        fs.readFileSync(filePath, "utf-8")
-    );
+router.get("/buscar", async (req, res) => {
+    try {
+        const nome = req.query.nome;
 
-    const nome = req.query.nome;
+        if (!nome) {
+            return res.status(400).json({
+                mensagem: "Informe um nome para buscar."
+            });
+        }
 
-    const resultado = empresas.filter((empresa) =>
-        empresa.corporate_name.toLowerCase().includes(nome.toLowerCase())
-    );
+        const empresas = await Company.find({
+            corporate_name: {
+                $regex: nome,
+                $options: "i"
+            }
+        });
 
-    res.json(resultado);
+        return res.status(200).json(empresas);
+    } catch (error) {
+        console.error("Erro ao buscar empresas por nome:", error);
+
+        return res.status(500).json({
+            mensagem: "Erro ao buscar empresas."
+        });
+    }
 });
+
 /**
  * @swagger
  * /company/buscar-data:
@@ -72,26 +92,49 @@ router.get("/buscar", (req, res) => {
  *         schema:
  *           type: string
  *           format: date
- *         example: "2026-10-04"
+ *           example: "2026-10-04"
  *     responses:
  *       200:
  *         description: Empresas encontradas
  */
 
 // Buscar por data
-router.get("/buscar-data", (req, res) => {
-    const empresas = JSON.parse(
-        fs.readFileSync(filePath, "utf-8")
-    );
+router.get("/buscar-data", async (req, res) => {
+    try {
+        const data = req.query.data;
 
-    const data = req.query.data;
+        if (!data || !/^\d{4}-\d{2}-\d{2}$/.test(data)) {
+            return res.status(400).json({
+                mensagem: "Informe uma data válida no formato YYYY-MM-DD."
+            });
+        }
 
-    const resultado = empresas.filter((empresa) =>
-        empresa.created_at.startsWith(data)
-    );
+        const inicio = new Date(`${data}T00:00:00.000Z`);
+        const fim = new Date(`${data}T23:59:59.999Z`);
 
-    res.json(resultado);
+        if (isNaN(inicio.getTime())) {
+            return res.status(400).json({
+                mensagem: "Data inválida."
+            });
+        }
+
+        const empresas = await Company.find({
+            created_at: {
+                $gte: inicio,
+                $lte: fim
+            }
+        });
+
+        return res.status(200).json(empresas);
+    } catch (error) {
+        console.error("Erro ao buscar empresas por data:", error);
+
+        return res.status(500).json({
+            mensagem: "Erro ao buscar empresas."
+        });
+    }
 });
+
 /**
  * @swagger
  * /company/{id}:
@@ -105,32 +148,41 @@ router.get("/buscar-data", (req, res) => {
  *         required: true
  *         schema:
  *           type: integer
- *         example: 1
+ *           example: 1
  *     responses:
  *       200:
  *         description: Empresa encontrada
  *       404:
  *         description: Empresa não encontrada
  */
+
 // Buscar por ID
-router.get("/:id", (req, res) => {
-    const empresas = JSON.parse(
-        fs.readFileSync(filePath, "utf-8")
-    );
+router.get("/:id", async (req, res) => {
+    try {
+        const id = Number(req.params.id);
 
-    const id = Number(req.params.id);
+        if (!Number.isInteger(id) || id <= 0) {
+            return res.status(400).json({
+                mensagem: "ID inválido."
+            });
+        }
 
-    const empresa = empresas.find(
-        (empresa) => empresa.id === id
-    );
+        const empresa = await Company.findOne({ id });
 
-    if (!empresa) {
-        return res.status(404).json({
-            mensagem: "Empresa não encontrada"
+        if (!empresa) {
+            return res.status(404).json({
+                mensagem: "Empresa não encontrada."
+            });
+        }
+
+        return res.status(200).json(empresa);
+    } catch (error) {
+        console.error("Erro ao buscar empresa:", error);
+
+        return res.status(500).json({
+            mensagem: "Erro ao buscar empresa."
         });
     }
-
-    res.json(empresa);
 });
 
 /**
@@ -163,33 +215,47 @@ router.get("/:id", (req, res) => {
  *       201:
  *         description: Empresa cadastrada com sucesso
  */
-// nova empresa
-router.post("/", (req, res) => {
-    const empresas = JSON.parse(
-        fs.readFileSync(filePath, "utf-8")
-    );
 
-    const novaEmpresa = {
-        id: empresas.length > 0
-            ? empresas[empresas.length - 1].id + 1
-            : 1,
+// Cadastrar nova empresa
+router.post("/", async (req, res) => {
+    try {
+        const {
+            corporate_name,
+            trade_name,
+            cnpj,
+            phone
+        } = req.body;
 
-        corporate_name: req.body.corporate_name,
-        trade_name: req.body.trade_name,
-        cnpj: req.body.cnpj,
-        phone: req.body.phone,
-        created_at: new Date().toISOString()
-    };
+        if (!corporate_name || !corporate_name.trim()) {
+            return res.status(400).json({
+                mensagem: "A razão social é obrigatória."
+            });
+        }
 
-    empresas.push(novaEmpresa);
+        const ultimaEmpresa = await Company.findOne().sort({ id: -1 });
 
-    fs.writeFileSync(
-        filePath,
-        JSON.stringify(empresas, null, 2)
-    );
+        const novoId = ultimaEmpresa
+            ? ultimaEmpresa.id + 1
+            : 1;
 
-    res.status(201).json(novaEmpresa);
+        const novaEmpresa = await Company.create({
+            id: novoId,
+            corporate_name,
+            trade_name,
+            cnpj,
+            phone
+        });
+
+        return res.status(201).json(novaEmpresa);
+    } catch (error) {
+        console.error("Erro ao cadastrar empresa:", error);
+
+        return res.status(500).json({
+            mensagem: "Erro ao cadastrar empresa."
+        });
+    }
 });
+
 /**
  * @swagger
  * /company/{id}:
@@ -203,7 +269,7 @@ router.post("/", (req, res) => {
  *         required: true
  *         schema:
  *           type: integer
- *         example: 1
+ *           example: 1
  *     requestBody:
  *       required: true
  *       content:
@@ -226,35 +292,67 @@ router.post("/", (req, res) => {
  *         description: Empresa não encontrada
  */
 
-// atualiza empresa
-router.put("/:id", (req, res) => {
-    const empresas = JSON.parse(
-        fs.readFileSync(filePath, "utf-8")
-    );
+// Atualizar empresa
+router.put("/:id", async (req, res) => {
+    try {
+        const id = Number(req.params.id);
 
-    const id = Number(req.params.id);
+        if (!Number.isInteger(id) || id <= 0) {
+            return res.status(400).json({
+                mensagem: "ID inválido."
+            });
+        }
 
-    const indice = empresas.findIndex(
-        (empresa) => empresa.id === id
-    );
+        const empresa = await Company.findOne({ id });
 
-    if (indice === -1) {
-        return res.status(404).json({
-            mensagem: "Empresa não encontrada"
+        if (!empresa) {
+            return res.status(404).json({
+                mensagem: "Empresa não encontrada."
+            });
+        }
+
+        const {
+            corporate_name,
+            trade_name,
+            cnpj,
+            phone
+        } = req.body;
+
+        const dadosAtualizados = {};
+
+        if (corporate_name !== undefined) {
+            dadosAtualizados.corporate_name = corporate_name;
+        }
+
+        if (trade_name !== undefined) {
+            dadosAtualizados.trade_name = trade_name;
+        }
+
+        if (cnpj !== undefined) {
+            dadosAtualizados.cnpj = cnpj;
+        }
+
+        if (phone !== undefined) {
+            dadosAtualizados.phone = phone;
+        }
+
+        const empresaAtualizada = await Company.findOneAndUpdate(
+            { id },
+            { $set: dadosAtualizados },
+            {
+                returnDocument: "after",
+                runValidators: true
+            }
+        );
+
+        return res.status(200).json(empresaAtualizada);
+    } catch (error) {
+        console.error("Erro ao atualizar empresa:", error);
+
+        return res.status(500).json({
+            mensagem: "Erro ao atualizar empresa."
         });
     }
-
-    empresas[indice] = {
-        ...req.body,
-        id: id
-    };
-
-    fs.writeFileSync(
-        filePath,
-        JSON.stringify(empresas, null, 2)
-    );
-
-    res.json(empresas[indice]);
 });
 
 /**
@@ -270,42 +368,44 @@ router.put("/:id", (req, res) => {
  *         required: true
  *         schema:
  *           type: integer
- *         example: 1
+ *           example: 1
  *     responses:
  *       200:
  *         description: Empresa removida com sucesso
  *       404:
  *         description: Empresa não encontrada
  */
-// deletar empresa
-router.delete("/:id", (req, res) => {
-    const empresas = JSON.parse(
-        fs.readFileSync(filePath, "utf-8")
-    );
 
-    const id = Number(req.params.id);
+// Deletar empresa
+router.delete("/:id", async (req, res) => {
+    try {
+        const id = Number(req.params.id);
 
-    const indice = empresas.findIndex(
-        (empresa) => empresa.id === id
-    );
+        if (!Number.isInteger(id) || id <= 0) {
+            return res.status(400).json({
+                mensagem: "ID inválido."
+            });
+        }
 
-    if (indice === -1) {
-        return res.status(404).json({
-            mensagem: "Empresa não encontrada"
+        const empresaRemovida = await Company.findOneAndDelete({ id });
+
+        if (!empresaRemovida) {
+            return res.status(404).json({
+                mensagem: "Empresa não encontrada."
+            });
+        }
+
+        return res.status(200).json({
+            mensagem: "Empresa removida com sucesso.",
+            empresa: empresaRemovida
+        });
+    } catch (error) {
+        console.error("Erro ao remover empresa:", error);
+
+        return res.status(500).json({
+            mensagem: "Erro ao remover empresa."
         });
     }
-
-    const empresaRemovida = empresas.splice(indice, 1);
-
-    fs.writeFileSync(
-        filePath,
-        JSON.stringify(empresas, null, 2)
-    );
-
-    res.json({
-        mensagem: "Empresa removida com sucesso",
-        empresa: empresaRemovida[0]
-    });
 });
 
 module.exports = router;

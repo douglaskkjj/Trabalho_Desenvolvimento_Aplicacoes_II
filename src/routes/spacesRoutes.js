@@ -1,20 +1,15 @@
-const express = require("express");
-const fs = require("fs");
-const path = require("path");
 
+const express = require("express");
 const router = express.Router();
 
-const filePath = path.join(__dirname, "../data/spaces.json");
+const Space = require("../models/Space");
 
-// Ler os espaços
-function readSpaces() {
-    const data = fs.readFileSync(filePath, "utf-8");
-    return JSON.parse(data);
+function escapeRegex(value) {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-// Salvar os espaços
-function saveSpaces(spaces) {
-    fs.writeFileSync(filePath, JSON.stringify(spaces, null, 2));
+function validarId(id) {
+    return Number.isInteger(Number(id)) && Number(id) > 0;
 }
 
 /**
@@ -37,20 +32,31 @@ function saveSpaces(spaces) {
  *         description: Lista de espaços retornada com sucesso
  */
 
-// GET - listar todos os espaços
-router.get("/", (req, res) => {
-    const spaces = readSpaces();
-    const { name } = req.query;
+// GET - listar espaços
+router.get("/", async (req, res) => {
+    try {
+        const { name } = req.query;
 
-    if (name) {
-        const result = spaces.filter(space =>
-            space.name.toLowerCase().includes(name.toLowerCase())
-        );
+        let spaces;
 
-        return res.json(result);
+        if (name) {
+            spaces = await Space.find({
+                name: {
+                    $regex: escapeRegex(name),
+                    $options: "i"
+                }
+            });
+        } else {
+            spaces = await Space.find();
+        }
+
+        return res.json(spaces);
+    } catch (error) {
+        console.error("Erro ao listar espaços:", error);
+        return res.status(500).json({
+            message: "Erro ao buscar espaços"
+        });
     }
-
-    res.json(spaces);
 });
 
 /**
@@ -76,19 +82,33 @@ router.get("/", (req, res) => {
  */
 
 // GET - buscar espaço por ID
-router.get("/:id", (req, res) => {
-    const spaces = readSpaces();
-    const id = Number(req.params.id);
+router.get("/:id", async (req, res) => {
+    try {
+        const { id } = req.params;
 
-    const space = spaces.find(space => space.id === id);
+        if (!validarId(id)) {
+            return res.status(400).json({
+                message: "ID inválido"
+            });
+        }
 
-    if (!space) {
-        return res.status(404).json({
-            message: "Espaço não encontrado"
+        const space = await Space.findOne({
+            id: Number(id)
+        });
+
+        if (!space) {
+            return res.status(404).json({
+                message: "Espaço não encontrado"
+            });
+        }
+
+        return res.json(space);
+    } catch (error) {
+        console.error("Erro ao buscar espaço:", error);
+        return res.status(500).json({
+            message: "Erro ao buscar espaço"
         });
     }
-
-    res.json(space);
 });
 
 /**
@@ -131,51 +151,72 @@ router.get("/:id", (req, res) => {
  *       201:
  *         description: Espaço cadastrado com sucesso
  *       400:
- *         description: Todos os campos são obrigatórios
+ *         description: Dados inválidos ou campos obrigatórios ausentes
  */
 
 // POST - cadastrar novo espaço
-router.post("/", (req, res) => {
-    const spaces = readSpaces();
+router.post("/", async (req, res) => {
+    try {
+        const {
+            name,
+            type,
+            capacity,
+            description,
+            is_active
+        } = req.body;
 
-    const {
-        name,
-        type,
-        capacity,
-        description,
-        is_active
-    } = req.body;
+        if (
+            !name ||
+            !type ||
+            capacity === undefined ||
+            !description ||
+            is_active === undefined
+        ) {
+            return res.status(400).json({
+                message: "Todos os campos são obrigatórios"
+            });
+        }
 
-    if (
-        !name ||
-        !type ||
-        capacity === undefined ||
-        !description ||
-        is_active === undefined
-    ) {
-        return res.status(400).json({
-            message: "Todos os campos são obrigatórios"
+        if (
+            typeof name !== "string" ||
+            typeof type !== "string" ||
+            typeof description !== "string" ||
+            !Number.isInteger(capacity) ||
+            capacity < 0 ||
+            typeof is_active !== "boolean"
+        ) {
+            return res.status(400).json({
+                message: "Dados inválidos para cadastrar o espaço"
+            });
+        }
+
+        const lastSpace = await Space.findOne().sort({ id: -1 });
+
+        const newId = lastSpace ? lastSpace.id + 1 : 1;
+
+        const newSpace = await Space.create({
+            id: newId,
+            name,
+            type,
+            capacity,
+            description,
+            is_active
+        });
+
+        return res.status(201).json(newSpace);
+    } catch (error) {
+        console.error("Erro ao cadastrar espaço:", error);
+
+        if (error.code === 11000) {
+            return res.status(409).json({
+                message: "Já existe um espaço com esse ID"
+            });
+        }
+
+        return res.status(500).json({
+            message: "Erro ao cadastrar espaço"
         });
     }
-
-    const newId = spaces.length > 0
-        ? Math.max(...spaces.map(space => space.id)) + 1
-        : 1;
-
-    const newSpace = {
-        id: newId,
-        name,
-        type,
-        capacity,
-        description,
-        is_active
-    };
-
-    spaces.push(newSpace);
-
-    saveSpaces(spaces);
-
-    res.status(201).json(newSpace);
 });
 
 /**
@@ -225,56 +266,83 @@ router.post("/", (req, res) => {
  *       200:
  *         description: Espaço atualizado com sucesso
  *       400:
- *         description: Todos os campos são obrigatórios
+ *         description: Dados inválidos ou campos obrigatórios ausentes
  *       404:
  *         description: Espaço não encontrado
  */
 
 // PUT - atualizar espaço
-router.put("/:id", (req, res) => {
-    const spaces = readSpaces();
-    const id = Number(req.params.id);
+router.put("/:id", async (req, res) => {
+    try {
+        const { id } = req.params;
 
-    const index = spaces.findIndex(space => space.id === id);
+        if (!validarId(id)) {
+            return res.status(400).json({
+                message: "ID inválido"
+            });
+        }
 
-    if (index === -1) {
-        return res.status(404).json({
-            message: "Espaço não encontrado"
+        const {
+            name,
+            type,
+            capacity,
+            description,
+            is_active
+        } = req.body;
+
+        if (
+            !name ||
+            !type ||
+            capacity === undefined ||
+            !description ||
+            is_active === undefined
+        ) {
+            return res.status(400).json({
+                message: "Todos os campos são obrigatórios"
+            });
+        }
+
+        if (
+            typeof name !== "string" ||
+            typeof type !== "string" ||
+            typeof description !== "string" ||
+            !Number.isInteger(capacity) ||
+            capacity < 0 ||
+            typeof is_active !== "boolean"
+        ) {
+            return res.status(400).json({
+                message: "Dados inválidos para atualizar o espaço"
+            });
+        }
+
+        const updatedSpace = await Space.findOneAndUpdate(
+            { id: Number(id) },
+            {
+                name,
+                type,
+                capacity,
+                description,
+                is_active
+            },
+            {
+                returnDocument: "after",
+                runValidators: true
+            }
+        );
+
+        if (!updatedSpace) {
+            return res.status(404).json({
+                message: "Espaço não encontrado"
+            });
+        }
+
+        return res.json(updatedSpace);
+    } catch (error) {
+        console.error("Erro ao atualizar espaço:", error);
+        return res.status(500).json({
+            message: "Erro ao atualizar espaço"
         });
     }
-
-    const {
-        name,
-        type,
-        capacity,
-        description,
-        is_active
-    } = req.body;
-
-    if (
-        !name ||
-        !type ||
-        capacity === undefined ||
-        !description ||
-        is_active === undefined
-    ) {
-        return res.status(400).json({
-            message: "Todos os campos são obrigatórios"
-        });
-    }
-
-    spaces[index] = {
-        id,
-        name,
-        type,
-        capacity,
-        description,
-        is_active
-    };
-
-    saveSpaces(spaces);
-
-    res.json(spaces[index]);
 });
 
 /**
@@ -300,26 +368,36 @@ router.put("/:id", (req, res) => {
  */
 
 // DELETE - excluir espaço
-router.delete("/:id", (req, res) => {
-    const spaces = readSpaces();
-    const id = Number(req.params.id);
+router.delete("/:id", async (req, res) => {
+    try {
+        const { id } = req.params;
 
-    const index = spaces.findIndex(space => space.id === id);
+        if (!validarId(id)) {
+            return res.status(400).json({
+                message: "ID inválido"
+            });
+        }
 
-    if (index === -1) {
-        return res.status(404).json({
-            message: "Espaço não encontrado"
+        const deletedSpace = await Space.findOneAndDelete({
+            id: Number(id)
+        });
+
+        if (!deletedSpace) {
+            return res.status(404).json({
+                message: "Espaço não encontrado"
+            });
+        }
+
+        return res.json({
+            message: "Espaço removido com sucesso",
+            space: deletedSpace
+        });
+    } catch (error) {
+        console.error("Erro ao excluir espaço:", error);
+        return res.status(500).json({
+            message: "Erro ao excluir espaço"
         });
     }
-
-    const deletedSpace = spaces.splice(index, 1)[0];
-
-    saveSpaces(spaces);
-
-    res.json({
-        message: "Espaço removido com sucesso",
-        space: deletedSpace
-    });
 });
 
 module.exports = router;
