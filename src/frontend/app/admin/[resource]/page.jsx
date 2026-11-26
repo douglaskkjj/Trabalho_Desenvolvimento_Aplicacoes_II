@@ -67,7 +67,7 @@ export default function ResourcePage({ params }) {
     setForm(
       Object.fromEntries(
         config.fields
-          .filter((f) => !f.createOnly || resource === 'usuarios')
+          .filter((f) => (!f.createOnly || resource === 'usuarios') && !f.editOnly)
           .map((f) => [f.name, f.type === 'boolean' ? false : ''])
       )
     );
@@ -212,19 +212,27 @@ export default function ResourcePage({ params }) {
                 filtered.map((item) => (
                   <tr key={item.id}>
                     {config.columns.map((c) => (
-                      <td key={c}>
-                        {c === 'status' ? (
-                          <span className={`pill ${String(item[c]).toLowerCase()}`}>
-                            {formatValue(item[c])}
-                          </span>
-                        ) : c === 'is_active' || c === 'is_external_allowed' ? (
-                          <span className={`pill ${item[c] ? 'active' : 'inactive'}`}>
-                            {formatValue(item[c])}
-                          </span>
-                        ) : (
-                          <span className="cell-value">{formatValue(item[c])}</span>
-                        )}
-                      </td>
+                     
+<td key={c}>
+  {c === 'status' ? (
+    <span className={`pill ${String(item[c]).toLowerCase()}`}>
+      {formatValue(item[c])}
+    </span>
+  ) : c === 'is_active' || c === 'is_external_allowed' ? (
+    <span className={`pill ${item[c] ? 'active' : 'inactive'}`}>
+      {formatValue(item[c])}
+    </span>
+  ) : c === 'role' ? (
+    <span className="cell-value">
+      {item[c] || '—'}
+    </span>
+  ) : (
+    <span className="cell-value">
+      {formatValue(item[c])}
+    </span>
+  )}
+</td>
+
                     ))}
                     <td>
                       <div className="actions">
@@ -275,8 +283,12 @@ export default function ResourcePage({ params }) {
 
             <form onSubmit={save}>
               <div className="form-grid">
-                {config.fields
-                  .filter((f) => !(editing && f.createOnly))
+                 {config.fields
+                  .filter((f) => {
+                    if (editing && f.createOnly) return false;
+                    if (f.editOnly && (!editing || !isAdmin)) return false;
+                    return true;
+                  })
                   .map((f) => (
                     <label key={f.name} className={f.type === 'textarea' ? 'span-2' : ''}>
                       {f.label}
