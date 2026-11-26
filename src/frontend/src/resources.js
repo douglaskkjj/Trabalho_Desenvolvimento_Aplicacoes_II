@@ -1,4 +1,4 @@
-export const resources = {
+  export const resources = {
   empresas: {
     title: 'Empresas', singular: 'Empresa', endpoint: '/company', description: 'Empresas parceiras e solicitantes',
     fields: [
@@ -35,8 +35,8 @@ export const resources = {
       { name: 'user_id', label: 'ID do usuário', type: 'number', required: true, min: 1 },
       { name: 'start_datetime', label: 'Data e hora de início', type: 'datetime-local', required: true },
       { name: 'end_datetime', label: 'Data e hora de término', type: 'datetime-local', required: true },
-      { name: 'status', label: 'Status', type: 'select', options: [{value:'PENDING',label:'Pendente'},{value:'APPROVED',label:'Aprovada'},{value:'REJECTED',label:'Rejeitada'},{value:'CANCELLED',label:'Cancelada'}] },
-      { name: 'rejection_reason', label: 'Motivo da rejeição', type: 'textarea' },
+      { name: 'status', label: 'Status', type: 'select', options: [{value:'PENDING',label:'Pendente'},{value:'APPROVED',label:'Aprovada'},{value:'REJECTED',label:'Rejeitada'},{value:'CANCELLED',label:'Cancelada', }], editOnly: true },
+      { name: 'rejection_reason', label: 'Motivo da rejeição', type: 'textarea', editOnly: true },
     ], columns: ['id', 'space_id', 'user_id', 'start_datetime', 'end_datetime', 'status'],
   },
   usuarios: {
@@ -66,6 +66,14 @@ export function unwrapList(data) {
 export function formatValue(value) {
   if (typeof value === 'boolean') return value ? 'Sim' : 'Não';
   if (value === null || value === undefined || value === '') return '—';
-  if (typeof value === 'string' && value.includes('T')) return new Date(value).toLocaleString('pt-BR');
+  
+  // Verifica se é realmente uma data no formato ISO (ex: 2026-11-26T14:30...)
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(value)) {
+    const date = new Date(value);
+    if (!Number.isNaN(date.getTime())) {
+      return date.toLocaleString('pt-BR');
+    }
+  }
+
   return String(value);
 }
