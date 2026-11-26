@@ -1,11 +1,92 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-const links = [{key:'',label:'Visão geral',icon:'▦'},{key:'empresas',label:'Empresas',icon:'▤'},{key:'espacos',label:'Espaços',icon:'⌂'},{key:'disponibilidades',label:'Disponibilidades',icon:'◷'},{key:'reservas',label:'Reservas',icon:'▣'},{key:'usuarios',label:'Usuários',icon:'♙'}];
-export default function AdminLayout({children}) {
- const router=useRouter(), path=usePathname(); const [user,setUser]=useState(null),[ready,setReady]=useState(false),[open,setOpen]=useState(false);
- useEffect(()=>{const token=localStorage.getItem('gestao_token');if(!token){router.replace('/login');return;}try{setUser(JSON.parse(localStorage.getItem('gestao_usuario')||'null'));}catch{}setReady(true);},[router]);
- function logout(){localStorage.removeItem('gestao_token');localStorage.removeItem('gestao_usuario');router.replace('/login');}
- if(!ready)return <div className="loading-screen">Carregando painel…</div>;
- return <div className="app-shell"><aside className={`sidebar ${open?'sidebar-open':''}`}><div className="side-brand"><div className="brand-mark small">GE<span>•</span></div><div><b>Gestão de Espaços</b><small>Painel administrativo</small></div></div><div className="nav-caption">MENU PRINCIPAL</div><nav>{links.map(l=><a key={l.key} href={l.key?`/admin/${l.key}`:'/admin'} className={(l.key?path===`/admin/${l.key}`:path==='/admin')?'nav-link active':'nav-link'} onClick={()=>setOpen(false)}><span className="nav-icon">{l.icon}</span>{l.label}{(l.key?path===`/admin/${l.key}`:path==='/admin')&&<i/>}</a>)}</nav><div className="sidebar-bottom"><div className="help-card"><span>✦</span><b>Precisa de ajuda?</b><p>Consulte a documentação da API.</p><a href={`${process.env.NEXT_PUBLIC_API_URL||'http://localhost:3000'}/api-docs`} target="_blank" rel="noreferrer">Abrir Swagger ↗</a></div><div className="profile"><div className="avatar">{user?.name?.[0]?.toUpperCase()||'U'}</div><div className="profile-info"><b>{user?.name||'Usuário'}</b><small>{user?.role||'Conta'}</small></div><button className="logout" onClick={logout} title="Sair">↪</button></div></div></aside><div className="main-column"><header className="topbar"><button className="menu-toggle" onClick={()=>setOpen(!open)}>☰</button><div className="breadcrumb">Gestão de Espaços <span>/</span> <b>{links.find(l=>l.key?path.startsWith(`/admin/${l.key}`):path==='/admin')?.label||'Painel'}</b></div><div className="top-user"><span className="status-dot"/> Sistema operacional</div></header><main className="content">{children}</main><footer className="footer">Gestão de Espaços <span>·</span> Projeto acadêmico — UNESC</footer></div>{open&&<button className="mobile-scrim" onClick={()=>setOpen(false)} aria-label="Fechar menu"/>}</div>;
+
+const allLinks = [
+  { key: '', label: 'Visão geral', icon: '▦', adminOnly: false },
+  { key: 'empresas', label: 'Empresas', icon: '▤', adminOnly: true },
+  { key: 'espacos', label: 'Espaços', icon: '⌂', adminOnly: false },
+  { key: 'disponibilidades', label: 'Disponibilidades', icon: '◷', adminOnly: false },
+  { key: 'reservas', label: 'Reservas', icon: '▣', adminOnly: false },
+  { key: 'usuarios', label: 'Usuários', icon: '♙', adminOnly: true }
+];
+
+export default function AdminLayout({ children }) {
+  const router = useRouter(), path = usePathname();
+  const [user, setUser] = useState(null), [ready, setReady] = useState(false), [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    const token = localStorage.getItem('gestao_token');
+    if (!token) { router.replace('/login'); return; }
+    try { setUser(JSON.parse(localStorage.getItem('gestao_usuario') || 'null')); } catch {}
+    setReady(true);
+  }, [router]);
+
+  function logout() {
+    localStorage.removeItem('gestao_token');
+    localStorage.removeItem('gestao_usuario');
+    router.replace('/login');
+  }
+
+  if (!ready) return <div className="loading-screen">Carregando painel…</div>;
+
+  const isAdmin = user?.role === 'ADMIN';
+  const links = allLinks.filter(l => isAdmin || !l.adminOnly);
+
+  return (
+    <div className="app-shell">
+      <aside className={`sidebar ${open ? 'sidebar-open' : ''}`}>
+        <div className="side-brand">
+          <div className="brand-mark small">GE<span>•</span></div>
+          <div>
+            <b>Gestão de Espaços</b>
+            <small>{isAdmin ? 'Painel administrativo' : 'Portal do cliente'}</small>
+          </div>
+        </div>
+        <div className="nav-caption">MENU PRINCIPAL</div>
+        <nav>
+          {links.map(l => (
+            <a
+              key={l.key}
+              href={l.key ? `/admin/${l.key}` : '/admin'}
+              className={(l.key ? path === `/admin/${l.key}` : path === '/admin') ? 'nav-link active' : 'nav-link'}
+              onClick={() => setOpen(false)}
+            >
+              <span className="nav-icon">{l.icon}</span>
+              {l.label}
+              {(l.key ? path === `/admin/${l.key}` : path === '/admin') && <i />}
+            </a>
+          ))}
+        </nav>
+        <div className="sidebar-bottom">
+          <div className="help-card">
+            <span>✦</span>
+            <b>Precisa de ajuda?</b>
+            <p>Consulte a documentação da API.</p>
+            <a href={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api-docs`} target="_blank" rel="noreferrer">Abrir Swagger ↗</a>
+          </div>
+          <div className="profile">
+            <div className="avatar">{user?.name?.[0]?.toUpperCase() || 'U'}</div>
+            <div className="profile-info">
+              <b>{user?.name || 'Usuário'}</b>
+              <small>{user?.role || 'Conta'}</small>
+            </div>
+            <button className="logout" onClick={logout} title="Sair">↪</button>
+          </div>
+        </div>
+      </aside>
+      <div className="main-column">
+        <header className="topbar">
+          <button className="menu-toggle" onClick={() => setOpen(!open)}>☰</button>
+          <div className="breadcrumb">
+            Gestão de Espaços <span>/</span> <b>{links.find(l => l.key ? path.startsWith(`/admin/${l.key}`) : path === '/admin')?.label || 'Painel'}</b>
+          </div>
+          <div className="top-user"><span className="status-dot" /> Sistema operacional</div>
+        </header>
+        <main className="content">{children}</main>
+        <footer className="footer">Gestão de Espaços <span>·</span> Projeto acadêmico — UNESC</footer>
+      </div>
+      {open && <button className="mobile-scrim" onClick={() => setOpen(false)} aria-label="Fechar menu" />}
+    </div>
+  );
 }

@@ -1,4 +1,4 @@
-export const resources = {
+  export const resources = {
   empresas: {
     title: 'Empresas', singular: 'Empresa', endpoint: '/company', description: 'Empresas parceiras e solicitantes',
     fields: [
