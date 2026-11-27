@@ -19,15 +19,27 @@ export default function ResourcePage({ params }) {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({});
   const [isAdmin, setIsAdmin] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState(null);
 
   useEffect(() => {
     try {
       const u = JSON.parse(localStorage.getItem('gestao_usuario') || '{}');
       setIsAdmin(u.role === 'ADMIN');
+      setCurrentUserId(u.id);
     } catch {}
   }, []);
 
-  const podeEditar = isAdmin || resource === 'reservas';
+  const podeCriar = isAdmin || resource === 'reservas';
+
+  function podeGerenciarItem(item) {
+    if (isAdmin) return true;
+    if (resource === 'reservas') {
+      const donoId = item.user_id ?? item.usuario_id ?? item.userId;
+      return Number(donoId) === Number(currentUserId);
+    }
+    return false;
+  }
+
 
   const load = useCallback(async () => {
     if (!config) return;
@@ -157,11 +169,12 @@ export default function ResourcePage({ params }) {
           <h1>{config.title}</h1>
           <p className="muted">{config.description}.</p>
         </div>
-        {podeEditar && (
+               {podeCriar && (
           <button className="primary" onClick={startCreate}>
             ＋ Novo {config.singular}
           </button>
         )}
+
       </div>
 
       {error && !modal && <div className="alert error">{error}</div>}
@@ -234,12 +247,12 @@ export default function ResourcePage({ params }) {
 </td>
 
                     ))}
-                    <td>
+                                 <td>
                       <div className="actions">
                         <button title="Ver detalhes" onClick={() => setDetail(item)}>
                           ◉
                         </button>
-                        {podeEditar && (
+                        {podeGerenciarItem(item) && (
                           <>
                             <button title="Editar" onClick={() => startEdit(item)}>
                               ✎
@@ -251,6 +264,7 @@ export default function ResourcePage({ params }) {
                         )}
                       </div>
                     </td>
+
                   </tr>
                 ))
               )}
@@ -387,7 +401,7 @@ export default function ResourcePage({ params }) {
               <button className="secondary" onClick={() => setDetail(null)}>
                 Fechar
               </button>
-              {podeEditar && (
+              {podeGerenciarItem(detail) && (
                 <button className="primary" onClick={() => startEdit(detail)}>
                   Editar registro
                 </button>
